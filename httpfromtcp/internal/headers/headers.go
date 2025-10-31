@@ -1,10 +1,10 @@
 package headers
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"unicode"
-	// "bytes"
 )
 
 type Headers map[string]string
@@ -48,27 +48,41 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	}
 
 	lineValue := strings.TrimSpace(spData[1])
-	h.parseExistingFieldName(fieldName, lineValue)
+	h.ParseExistingFieldName(fieldName, lineValue)
 
 	// number of bytes parsed index + 2 for the newline char
 	return index + len(SEPARATOR), false, nil
 }
 
-func( h Headers) Get(key string) (string, error) {
+func (h Headers) CheckHeader(key string) bool {
 	key = strings.ToLower(key)
-	if _, exist := h[key]; exist {
-		return h[key], nil
-	}
-	return "Nothing", fmt.Errorf("this header does not exist")
+	_, ok := h[key]
+	return ok
 }
 
-func (h Headers) parseExistingFieldName(fieldName, lineValue string) {
+func( h Headers) Get(key string) string {
+	key = strings.ToLower(key)
+	return h[key]
+}
+
+func (h Headers) ParseExistingFieldName(fieldName, lineValue string) {
 	// if the fieldName already exists
 	if _, exist := h[fieldName]; exist {
 		h[fieldName] = fmt.Sprintf("%s, %s", h[fieldName], lineValue)
 	} else { 
 		h[fieldName] = lineValue
 	}
+}
+
+// converts the content of headers into bytes of field mapped to its value
+func (h Headers) Bytes() []byte {
+    var buf bytes.Buffer
+    for k, v := range h {
+        buf.WriteString(fmt.Sprintf("%s: %s", k, strings.TrimSuffix(v, "\r\n")))
+        buf.WriteString("\r\n")
+    }
+    buf.WriteString("\r\n") // end of header section
+    return buf.Bytes()
 }
 
 

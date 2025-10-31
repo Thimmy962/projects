@@ -8,6 +8,8 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"time"
+	"net"
 )
 
 type internal int
@@ -26,12 +28,7 @@ type Request struct {
 	Body        []byte
 }
 
-var enum = map[internal]string{
-	0: "initialized",
-	1: "parsingHeader",
-	2: "parsingBody",
-	3: "done",
-}
+
 
 type RequestLine struct {
 	HttpVersion   string
@@ -41,6 +38,7 @@ type RequestLine struct {
 
 var MALFORMED_HTTP_VERSION = fmt.Errorf("malformed http version")
 var MALFORMED_REQUEST_LINE = fmt.Errorf("malformed request line")
+var CONTENT_LENGTH_LENGTH_NOT_VALID = fmt.Errorf("the content length could not be parsed as it contains none digits")
 
 var SEPARATOR = "\r\n"
 
@@ -54,18 +52,29 @@ func RequestFromReader(r io.Reader) (*Request, error) {
 	}
 
 	for {
+		// If this is a network connection, and we're currently parsing the body,
+		// set a short read deadline to allow graceful EOF detection.
+		if request.state == parsingBody {
+			if conn, ok := r.(net.Conn); ok {
+				conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+			}
+		}
 
 		n, err := r.Read(tmp)
 
 		if n > 0 {
 			buf.Write(tmp[:n])
+		} else {
+			_, err := request.parse(buf.Bytes())
+			if err != nil {
+				return nil, err
+			}
 		}
 		
 		// Always try to parse whatever is in buffer
 		for buf.Len() > 0 {
 			bytesParsed, perr := request.parse(buf.Bytes())
 			if perr != nil {
-				fmt.Println(perr.Error())
 				return nil, perr
 			}
 
@@ -100,6 +109,7 @@ func RequestFromReader(r io.Reader) (*Request, error) {
 			return  nil, err
 		}
 	}
+	
 
 	return &request, nil
 }
@@ -113,59 +123,30 @@ func (r *Request) parse(data []byte) (int, error) {
 		}
 		r.RequestLine = *RLine
 		r.state = parsingHeader
-		// fmt.Println("Done Parsing requestline")
 		return bytesRead, err
 
 	case parsingHeader:
 		bytesRead, doneReading, err := r.Headers.Parse(data)
 		if doneReading{
-			r.state = parsingBody
+			if !r.Headers.CheckHeader("coNTent-length"){
+				r.state = done
+			} else {
+				r.state = parsingBody
+			}
 		}
 		return bytesRead, err
 
 	case parsingBody:
-		var content_length int
-		value, err := r.Headers.Get("Content-Length")
-		if err != nil {
-			// err means no content-length in the header
-			r.state = done
-			return 0, nil
-		}
 		
-		content_length64, intParsingErr := strconv.ParseInt(value, 10, 64)
-		if intParsingErr != nil {
-			return 0, intParsingErr
+		content_length, err := r.contentLengthParser()
+		if err != nil {
+			return 0, err
 		}
-
-		content_length = int(content_length64)
-		if content_length < 1 {
-			return 0, fmt.Errorf("content-length can not be less that 1")
-		}
-
-
 		dataLen := len(data)
 		bodyLen := len(r.Body)
 
-		// Body cannot exceed Content-Length
-		if bodyLen > content_length {
-			return 0, fmt.Errorf("excess body: already received %d bytes, expected %d", bodyLen, content_length)
+		return r.concatData(dataLen, bodyLen, content_length, data)
 		}
-
-		// If new data was read, append it to the body
-		if dataLen > 0 {
-			r.Body = append(r.Body, data...)
-			return dataLen, nil
-		}
-		
-		if bodyLen < content_length {
-				return 0, fmt.Errorf("incomplete body: received %d bytes, expected %d", bodyLen, content_length)
-			}
-
-			// perfect match - done parsing
-		r.state = done
-
-		return dataLen, nil
-	}
 	return -1, fmt.Errorf("error: trying to read data in a done state")
 }
 
@@ -201,4 +182,45 @@ func adjustingBuffer(bytesParsed int, buf *bytes.Buffer) {
 	remaining := buf.Bytes()[bytesParsed:]
 	buf.Reset()
 	buf.Write(remaining)
+}
+
+
+func (r *Request) contentLengthParser() (int, error) {
+	var content_length int
+	value := r.Headers.Get("Content-Length")
+	content_length64, intParsingErr := strconv.ParseInt(value, 10, 64)
+	if intParsingErr != nil {
+		return 0, fmt.Errorf("%s --- %s",intParsingErr,  CONTENT_LENGTH_LENGTH_NOT_VALID)
+	}
+
+	content_length = int(content_length64)
+	if content_length < 1 {
+		return 0, fmt.Errorf("content-length can not be less that 1")
+	}
+	return content_length, nil
+}
+
+/*
+	Append a new string of data to the body
+*/
+
+func (r *Request)concatData(dataLen, bodyLen, contentLength int, data []byte) (int, error) {
+		if bodyLen > contentLength {
+			return 0, fmt.Errorf("excess body: already received %d bytes, expected %d", bodyLen, contentLength)
+		}
+
+		// If new data was read, append it to the body
+		if dataLen > 0 {
+			r.Body = append(r.Body, data...)
+			return dataLen, nil
+		}
+
+		if bodyLen < contentLength {
+				return 0, fmt.Errorf("incomplete body: received %d bytes, expected %d", bodyLen, contentLength)
+		}
+
+			// perfect match - done parsing
+		r.state = done
+
+		return dataLen, nil
 }

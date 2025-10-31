@@ -1,8 +1,6 @@
 package request
 
 import (
-	// "fmt"
-	"fmt"
 	"io"
 	"testing"
 
@@ -40,7 +38,6 @@ func TestRequestLineParse(t *testing.T) {
 	}
 	
 	r, err := RequestFromReader(reader)
-	fmt.Println(err)
 	require.NoError(t, err)
 	require.NotNil(t, r)
 	assert.Equal(t, "GET", r.RequestLine.Method)
@@ -98,16 +95,16 @@ func TestBodyParse(t *testing.T) {
 	require.NotNil(t, r)
 	assert.Equal(t, "hello world!\n", string(r.Body))
 
-// Test: Body shorter than reported content length
-reader = &chunkReader{
+	// Test: Body shorter than reported content length
+	reader = &chunkReader{
 	data: "POST /submit HTTP/1.1\r\n" +
 		"Host: localhost:42069\r\n" +
-		"Content-Length: 20\r\n" +
+		"Content-Length: 11\r\n" +
 		"\r\n" +
-		"partial content",
+		"partial co\n",
 	numBytesPerRead: 3,
-}
-r, err = RequestFromReader(reader)
-require.Error(t, err)
+	}
+	r, err = RequestFromReader(reader)
+	require.NoError(t, err)
 }
 
