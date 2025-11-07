@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
 	"http/internal/request"
 	"http/internal/response"
@@ -11,18 +12,19 @@ import (
 type Server struct {
 	closed bool
 	ln net.Listener
+	handlerFunction Handler
 }
 
-func Serve(port string) (*Server, error) {
+func Serve(port string, handler Handler) (*Server, error) {
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {
 		log.Fatalln(err.Error())
 		return nil, err
 	}
 	
-	serve := Server{false, ln}
+	serve := &Server{false, ln, handler}
 	go serve.listen()
-	return &serve, nil
+	return serve, nil
 }
 
 
@@ -33,43 +35,45 @@ func (s *Server) Close() error {
 
 
 func (s *Server) handle(connection net.Conn) {
-	_, err := request.RequestFromReader(connection)
+	defer connection.Close()
+	parsedRequest, err := request.RequestFromReader(connection)
 	if err != nil {
-		fmt.Println(err.Error())
 		s.Close()
 		return
 	}
-	data := "Hello World!\n"
-	err = response.WriteStatusLine(connection, 200)
+	
+	var buf bytes.Buffer
+
+	handlerErr := s.handlerFunction(&buf, parsedRequest)
+	err = response.WriteStatusLine(connection, response.StatusCode(handlerErr.code))
 	if err != nil {
 		s.Close()
 	}
 
-	headers := response.GetDefaultHeaders(0)
+	headers := response.GetDefaultHeaders(len(handlerErr.errorMsg))
 
 	if err = response.WriteHeaders(connection, headers); err != nil {
 		s.Close()
 		return
 	}
-	
-	connection.Write([]byte(data))
+		if _, err = connection.Write(buf.Bytes()); err != nil {
+			s.Close()
+			return
+		}
 }
 
 
 func (s *Server) listen() {
 	for {
-		if s.closed {
-			break
-		}
 		conn, err := s.ln.Accept()
 		if err != nil {
+			if s.closed {
+				return
+			}
 			fmt.Println(err.Error())
 		}
 
-		go func(conn net.Conn) {
-			defer conn.Close()
-			s.handle(conn)
-		}(conn)
+		go s.handle(conn)
 	}
 }
 
