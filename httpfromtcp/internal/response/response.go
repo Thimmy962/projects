@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"http/internal/headers"
 	"io"
+	"bytes"
 )
 
 
@@ -15,19 +16,19 @@ const (
 	server_error = 500
 )
 
+type Writer struct {
+	write io.Writer
+	status int
+}
+
+func InitWriter(writer *bytes.Buffer) Writer{
+	return Writer{writer, 0}
+}
 
 var responseEnum = map[StatusCode]string{
 	200: "HTTP/1.1 200 OK\r\n",
 	400: "HTTP/1.1 400 Bad Request\r\n",
 	500: "HTTP/1.1 500 Internal Server Error\r\n",
-}
-
-func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
-	_, err := w.Write([]byte(responseEnum[statusCode]))
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 
@@ -40,10 +41,34 @@ func GetDefaultHeaders(contentLen int) headers.Headers {
 }
 
 
-func WriteHeaders(w io.Writer, headers headers.Headers) error {
-	headerBytes := headers.Bytes()
-	if _, err := w.Write(headerBytes); err != nil {
-		return err
-	}
-	return nil
+func (w *Writer)WriteStatusLine(statusCode StatusCode) error {
+	_, err := w.write.Write([]byte(responseEnum[statusCode]))
+	w.status = 1
+	return err
 }
+
+func (w *Writer)WriteHeaders(headers headers.Headers) error {
+	if w.status != 1 {
+		panic("YOU HAVE TO CALL THE WriteStatusLine method of the Writer type first")
+	}
+	// Bytes method was implemented in the headers package to turn headers into bytes
+	headerBytes := headers.Bytes()
+	_, err := w.write.Write(headerBytes)
+	w.status = 2
+	return err
+}
+
+
+func (w *Writer) WriteBody(p []byte) (int, error) {
+	if w.status != 2 {
+		panic("YOU HAVE TO CALL THE WriteHeaders method of the Writer type first")
+	}
+	return w.write.Write(p)
+}
+
+
+func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
+	return w.write.Write(p)
+}
+
+// func (w *Writer) WriteChunkedBodyDone() (int, error)

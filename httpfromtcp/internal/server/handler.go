@@ -1,24 +1,35 @@
 package server
 
 import (
-	"io"
-	"http/internal/request"
 	"fmt"
+	"http/internal/response"
+	"http/internal/request"
+	"io"
 )
 
 type HandlerError struct {
-	code int
+	statusCode int
 	errorMsg string
 }
 
-// the constr
-func HandlerErrorConstructor(code int, msg string) *HandlerError{
-	return &HandlerError{code, msg}
+// modifies the value of HandlerError
+func (handlerError *HandlerError) HandlerErrorModifier(code int, msg string) {
+	handlerError.statusCode = code
+	handlerError.errorMsg = msg
+}
+
+
+func (handlerError *HandlerError)ErrMsg() string {
+	return handlerError.errorMsg
+}
+
+func (handlerError *HandlerError)Code() int {
+	return handlerError.statusCode
 }
 
 
 
-type Handler func(w io.Writer, req *request.Request) *HandlerError
+type Handler func(w *response.Writer, req *request.Request) *HandlerError
 
 
 func Greet(w io.Writer, req *request.Request) *HandlerError {
@@ -30,3 +41,9 @@ func Greet(w io.Writer, req *request.Request) *HandlerError {
 	}
 	return nil
 }
+
+
+
+// func Proxyhandler(w *response.Writer, req *request.Request) *HandlerError {
+	// path := req.RequestLine.RequestTargetreq *request.Request) *HandlerError {
+// }

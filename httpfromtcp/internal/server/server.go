@@ -43,20 +43,13 @@ func (s *Server) handle(connection net.Conn) {
 	}
 	
 	var buf bytes.Buffer
+	writer := response.InitWriter(&buf)
 
-	handlerErr := s.handlerFunction(&buf, parsedRequest)
-	err = response.WriteStatusLine(connection, response.StatusCode(handlerErr.code))
-	if err != nil {
-		s.Close()
-	}
+	s.handlerFunction(&writer, parsedRequest)
 
-	headers := response.GetDefaultHeaders(len(handlerErr.errorMsg))
 
-	if err = response.WriteHeaders(connection, headers); err != nil {
-		s.Close()
-		return
-	}
-		if _, err = connection.Write(buf.Bytes()); err != nil {
+
+	if _, err = connection.Write(buf.Bytes()); err != nil {
 			s.Close()
 			return
 		}

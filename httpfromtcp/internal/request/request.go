@@ -34,6 +34,14 @@ type RequestLine struct {
 	HttpVersion   string
 	RequestTarget string
 	Method        string
+	// This is not part of the question, but I added it any way so that I can use it when handling request and not parse again
+	ParsedUrl []string
+}
+
+
+func (s *RequestLine) ParseUrl() []string {
+	path := strings.TrimLeft(s.RequestTarget, "/")
+	return strings.Split(path, "/")
 }
 
 var MALFORMED_HTTP_VERSION = fmt.Errorf("malformed http version")
@@ -123,6 +131,8 @@ func (r *Request) parse(data []byte) (int, error) {
 		}
 		r.RequestLine = *RLine
 		r.state = parsingHeader
+		// when the requesline has been gotten, parse the the target path
+		r.RequestLine.ParsedUrl = r.RequestLine.ParseUrl()
 		return bytesRead, err
 
 	case parsingHeader:
