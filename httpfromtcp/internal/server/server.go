@@ -47,7 +47,7 @@ func (s *Server) handle(connection net.Conn) {
 
 	s.handlerFunction(&writer, parsedRequest)
 
-
+	
 
 	if _, err = connection.Write(buf.Bytes()); err != nil {
 			s.Close()
