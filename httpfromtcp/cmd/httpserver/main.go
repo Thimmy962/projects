@@ -1,10 +1,10 @@
 package main
 
 import (
-	"http/internal/headers"
+	// "http/internal/headers"
 	"http/internal/request"
-	"http/internal/response"
 	"http/internal/server"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -14,42 +14,22 @@ import (
 const port = "42069"
 
 
-
-func Handle(w *response.Writer, req *request.Request) *server.HandlerError {
-	headers := make(headers.Headers)
-	handlerError := &server.HandlerError{}
-	
-	headers.ParseExistingFieldName("Connection", "Closed")
-	
-	handle := server.GetFunc(req.RequestLine.ParsedUrl)	
-
-	handle(handlerError, &headers)
-	
-
-
-
-	err := w.WriteStatusLine(response.StatusCode(handlerError.Code()))
-	if err != nil {
-		server.ErrorWriting(err, handlerError)
-		return handlerError
+func handle(w io.Writer, req *request.Request) *server.HandlerError{
+	switch req.RequestLine.RequestTarget {
+	case "/yourproblem":
+		return &server.HandlerError{400, "Your problem is not my problem\n"}
+	case "/myproblem":
+		return &server.HandlerError{500, "Woopsie, my bad\n"}
+	default:
+		data := "All good, frfr\n"
+		w.Write([]byte(data))
+		return nil
 	}
-
-
-	if err = w.WriteHeaders(headers); err != nil {
-		server.ErrorWriting(err, handlerError)
-		return handlerError
-	}
-
-
-	if _, err = w.WriteBody([]byte(handlerError.ErrMsg())); err != nil {
-		server.ErrorWriting(err, handlerError)
-		return handlerError
-	}
-	
-	return handlerError
 }
+
+
 func main() {
-	server, err := server.Serve(port, Handle)
+	server, err := server.Serve(port, handle)
 	// server, err := server.Serve(port, handler.greet())
 	if err != nil {
 		log.Fatalf("Error starting server: %v", err)

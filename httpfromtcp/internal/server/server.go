@@ -3,10 +3,12 @@ package server
 import (
 	"bytes"
 	"fmt"
+	"http/internal/headers"
 	"http/internal/request"
 	"http/internal/response"
 	"log"
 	"net"
+	"net/url"
 )
 
 type Server struct {
@@ -15,14 +17,14 @@ type Server struct {
 	handlerFunction Handler
 }
 
-func Serve(port string, handler Handler) (*Server, error) {
+func Serve(port string, handle Handler) (*Server, error) {
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {
 		log.Fatalln(err.Error())
 		return nil, err
 	}
 	
-	serve := &Server{false, ln, handler}
+	serve := &Server{false, ln, handle}
 	go serve.listen()
 	return serve, nil
 }
@@ -36,23 +38,37 @@ func (s *Server) Close() error {
 
 func (s *Server) handle(connection net.Conn) {
 	defer connection.Close()
-	parsedRequest, err := request.RequestFromReader(connection)
+	req, err := request.RequestFromReader(connection)
 	if err != nil {
-		s.Close()
+		response.WriteStatusLine(connection, 400)
+		data := "Request or header badly formed"
+		headers := headers.Headers{}
+		headers.ParseExistingFieldName("Content-Type", "text/plain")
+		headers.ParseExistingFieldName("Content-Length", fmt.Sprintf("%d",len(data)))
+		response.WriteHeaders(connection, headers)
+		connection.Write([]byte(data))
 		return
 	}
-	
+
+	url.Parse(req.RequestLine.RequestTarget)
+
 	var buf bytes.Buffer
-	writer := response.InitWriter(&buf)
-
-	s.handlerFunction(&writer, parsedRequest)
-
 	
+	hErr := s.handlerFunction(&buf, req); 
+	if hErr != nil {
+		hErr.HandlerToWriter(connection)
+		return
+	}
 
-	if _, err = connection.Write(buf.Bytes()); err != nil {
-			s.Close()
-			return
-		}
+
+	response.WriteStatusLine(connection, response.StatusCode(200))
+	headers := response.GetDefaultHeaders(buf.Len())
+	response.WriteHeaders(connection, headers)
+	
+	_, err = connection.Write([]byte(buf.Bytes()))
+	if err != nil {
+		connection.Write([]byte(err.Error()))
+	}
 }
 
 

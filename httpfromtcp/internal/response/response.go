@@ -3,27 +3,34 @@ package response
 import (
 	"fmt"
 	"http/internal/headers"
+	"net"
 	"io"
-	"bytes"
 )
 
 
 type StatusCode int
 
 const (
-	success StatusCode = 200
-	bad = 400
-	server_error = 500
+	Success StatusCode = 200
+	Bad = 400
+	Server_error = 500
 )
 
 type Writer struct {
-	write io.Writer
-	status int
+	connection net.Conn
 }
 
-func InitWriter(writer *bytes.Buffer) Writer{
-	return Writer{writer, 0}
+func InitWriter(conn net.Conn) *Writer {
+	return &Writer{conn}
 }
+
+
+func (w *Writer) WriteHeaders(headers headers.Headers) error{
+	_, err := w.connection.Write(headers.Bytes())
+	return err
+}
+
+
 
 var responseEnum = map[StatusCode]string{
 	200: "HTTP/1.1 200 OK\r\n",
@@ -37,38 +44,19 @@ func GetDefaultHeaders(contentLen int) headers.Headers {
 	headers.ParseExistingFieldName("Content-Length", fmt.Sprintf("%d", contentLen))
 	headers.ParseExistingFieldName("Connection", "Closed")
 	headers.ParseExistingFieldName("Content-Type", "text/plain")
+	headers.ParseExistingFieldName("Server", "NGINX")
 	return headers
 }
 
-
-func (w *Writer)WriteStatusLine(statusCode StatusCode) error {
-	_, err := w.write.Write([]byte(responseEnum[statusCode]))
-	w.status = 1
-	return err
-}
-
-func (w *Writer)WriteHeaders(headers headers.Headers) error {
-	if w.status != 1 {
-		panic("YOU HAVE TO CALL THE WriteStatusLine method of the Writer type first")
-	}
-	// Bytes method was implemented in the headers package to turn headers into bytes
-	headerBytes := headers.Bytes()
-	_, err := w.write.Write(headerBytes)
-	w.status = 2
+func WriteHeaders(w io.Writer, header headers.Headers) error{
+	_, err := w.Write(header.Bytes())
 	return err
 }
 
 
-func (w *Writer) WriteBody(p []byte) (int, error) {
-	if w.status != 2 {
-		panic("YOU HAVE TO CALL THE WriteHeaders method of the Writer type first")
-	}
-	return w.write.Write(p)
+func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
+	_, err := w.Write([]byte(responseEnum[statusCode]))
+	return err
 }
 
 
-func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
-	return w.write.Write(p)
-}
-
-// func (w *Writer) WriteChunkedBodyDone() (int, error)
