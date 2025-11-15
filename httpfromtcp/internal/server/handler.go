@@ -14,12 +14,9 @@ type HandlerError struct {
 
 
 
-type Handler func(w io.Writer, req *request.Request) *HandlerError
+type Handler func(w *response.Writer, req *request.Request) *HandlerError
 
 // writes an handlerError to io.Writer
-func (hErr *HandlerError)HandlerToWriter(w io.Writer) {
-	response.WriteStatusLine(w, response.StatusCode(hErr.StatusCode))
-	headers := response.GetDefaultHeaders(len(hErr.ErrorMsg))
-	response.WriteHeaders(w, headers)
-	w.Write([]byte(hErr.ErrorMsg))
+func HandlerToWriter(w io.Writer, p []byte) {
+	w.Write(p)
 }

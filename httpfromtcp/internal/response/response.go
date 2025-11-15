@@ -17,20 +17,16 @@ const (
 )
 
 type Writer struct {
-	connection net.Conn
-}
-
-func InitWriter(conn net.Conn) *Writer {
-	return &Writer{conn}
-}
-
-
-func (w *Writer) WriteHeaders(headers headers.Headers) error{
-	_, err := w.connection.Write(headers.Bytes())
-	return err
+	Connection net.Conn
+	Body io.Writer
+	Headers headers.Headers
+	StatusCode StatusCode
 }
 
 
+func (write *Writer) Write(p []byte) (int, error) {
+	return write.Connection.Write(p)
+}
 
 var responseEnum = map[StatusCode]string{
 	200: "HTTP/1.1 200 OK\r\n",
@@ -60,3 +56,16 @@ func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
 }
 
 
+func (w *Writer) WriteStatusLine(statusCode StatusCode) error{
+	return WriteStatusLine(w.Connection, statusCode)
+}
+
+
+func (w *Writer) WriteHeaders(headers headers.Headers) error {
+	return WriteHeaders(w.Connection, headers)
+}
+
+
+func (w *Writer) WriteBody(p []byte) (int, error) {
+	return w.Connection.Write(p)
+}

@@ -53,19 +53,20 @@ func (s *Server) handle(connection net.Conn) {
 	url.Parse(req.RequestLine.RequestTarget)
 
 	var buf bytes.Buffer
-	
-	hErr := s.handlerFunction(&buf, req); 
+	writer := response.Writer{Connection: connection, Body: &buf}
+	hErr := s.handlerFunction(&writer, req); 
 	if hErr != nil {
-		hErr.HandlerToWriter(connection)
+		writer.WriteStatusLine(response.StatusCode(hErr.StatusCode))
+		writer.WriteHeaders(writer.Headers)
+		writer.WriteBody([]byte(hErr.ErrorMsg))
 		return
 	}
 
 
-	response.WriteStatusLine(connection, response.StatusCode(200))
-	headers := response.GetDefaultHeaders(buf.Len())
-	response.WriteHeaders(connection, headers)
+	writer.WriteStatusLine(response.StatusCode(200))
+	writer.WriteHeaders(writer.Headers)
 	
-	_, err = connection.Write([]byte(buf.Bytes()))
+	_, err = writer.WriteBody(buf.Bytes())
 	if err != nil {
 		connection.Write([]byte(err.Error()))
 	}

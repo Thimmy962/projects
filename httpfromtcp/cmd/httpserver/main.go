@@ -1,29 +1,28 @@
 package main
 
 import (
-	// "http/internal/headers"
 	"http/internal/request"
+	"http/internal/response"
 	"http/internal/server"
-	"io"
 	"log"
 	"os"
 	"os/signal"
+	"regexp"
 	"syscall"
 )
 
 const port = "42069"
 
 
-func handle(w io.Writer, req *request.Request) *server.HandlerError{
-	switch req.RequestLine.RequestTarget {
-	case "/yourproblem":
-		return &server.HandlerError{400, "Your problem is not my problem\n"}
-	case "/myproblem":
-		return &server.HandlerError{500, "Woopsie, my bad\n"}
+func handle(w *response.Writer, req *request.Request) *server.HandlerError{
+	
+	switch{
+	case regexp.MustCompile(`^.yourproblem`).MatchString(req.RequestLine.RequestTarget):
+		return yourproblem(w)
+	case  regexp.MustCompile(`^.myproblem`).MatchString(req.RequestLine.RequestTarget):
+		return myproblem(w)
 	default:
-		data := "All good, frfr\n"
-		w.Write([]byte(data))
-		return nil
+		return Default(w)
 	}
 }
 
