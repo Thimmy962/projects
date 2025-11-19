@@ -65,6 +65,7 @@ func( h Headers) Get(key string) string {
 	return h[key]
 }
 
+// used if a particular header can have multiple values
 func (h Headers) ParseExistingFieldName(fieldName, lineValue string) {
 	// if the fieldName already exists
 	if _, exist := h[fieldName]; exist {
@@ -85,7 +86,7 @@ func (h Headers) Bytes() []byte {
     return buf.Bytes()
 }
 
-
+// checks the characters in the field name
 func checkFieldName(fieldname string) error {
 	for _, char := range fieldname {
 		if unicode.IsDigit(char) || unicode.IsLetter(char) || specificSymbol(char) {
@@ -106,4 +107,13 @@ var allowedSymbols = map[rune]bool{
 
 func specificSymbol(r rune) bool {
 	return allowedSymbols[r]
+}
+
+// if the key exist assign a value to that key else create that key in the map and assign value to it.
+func (h Headers) Set(key,value string) {
+	h[key] = value
+}
+
+func (h Headers) Delete(key string) {
+	delete(h, key)
 }

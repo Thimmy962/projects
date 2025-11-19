@@ -21,6 +21,10 @@ func handle(w *response.Writer, req *request.Request) *server.HandlerError{
 		return yourproblem(w)
 	case  regexp.MustCompile(`^.myproblem`).MatchString(req.RequestLine.RequestTarget):
 		return myproblem(w)
+	case regexp.MustCompile(`^/httpbin/stream/\d+`).MatchString(req.RequestLine.RequestTarget):
+		return stream(w, req)
+	case regexp.MustCompile(`^/video`).MatchString(req.RequestLine.RequestTarget):
+		return video(w, req)
 	default:
 		return Default(w)
 	}

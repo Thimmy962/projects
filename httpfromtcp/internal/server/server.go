@@ -57,14 +57,14 @@ func (s *Server) handle(connection net.Conn) {
 	hErr := s.handlerFunction(&writer, req); 
 	if hErr != nil {
 		writer.WriteStatusLine(response.StatusCode(hErr.StatusCode))
-		writer.WriteHeaders(writer.Headers)
+		writer.WriteHeaders()
 		writer.WriteBody([]byte(hErr.ErrorMsg))
 		return
 	}
 
 
 	writer.WriteStatusLine(response.StatusCode(200))
-	writer.WriteHeaders(writer.Headers)
+	writer.WriteHeaders()
 	
 	_, err = writer.WriteBody(buf.Bytes())
 	if err != nil {
