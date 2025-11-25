@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -105,22 +104,7 @@ func ValidateChirp(w http.ResponseWriter, req *http.Request) {
 	}
 
 	chirp := Chirp{Body: buf.String()}
-	jsonData, err := json.Marshal(chirp)
-	if err != nil {
-		log.Println(err.Error())
-		w.WriteHeader(500)
-		return
-	}
-	buf.Reset()
-	// convert jsonData to string from byte, pass it to a function that returns a string
-	// convert the returned string to byte and svave in jsonData 
-	jsonData = []byte(profaneFUnc(string(jsonData)))
-	buf.Write(jsonData)
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
-
-	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(200)
-	w.Write(buf.Bytes())
+	respondWithJSON(w, 200, buf, chirp)
 }
 
 
