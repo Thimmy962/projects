@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +13,17 @@ type apiConfig struct{
 	serverHit atomic.Int64
 }
 
+
+type Chirp struct {
+	Body string `json:"body"`
+}
+
+type Error struct {
+	Err string `json:"error"`
+}
+
+
+var profane =[]string {"kerfuffle", "sharbert", "fornax"}
 
 func main() {
 	port := "8888"
@@ -29,6 +42,8 @@ func main() {
 
 	serMux.Handle("GET /admin/metrics", metrics(&cfg))
 	serMux.HandleFunc("POST /admin/reset", cfg.reset())
+
+	serMux.HandleFunc("POST /api/validate_chirp", ValidateChirp)
 
 
 	log.Printf("Serving files on port: %s\n", port)
@@ -73,3 +88,39 @@ func (cfg *apiConfig) reset() http.HandlerFunc {
 		metrics(cfg)
 	})
 }
+
+
+func ValidateChirp(w http.ResponseWriter, req *http.Request) {
+	var buf bytes.Buffer
+	n, err := buf.ReadFrom(req.Body)
+	// if there is an error in the writing
+	if err != nil {
+		Err_500ApplicationJson(w, "something went wrong")
+		return
+	}
+	// if the number of bytes read(n) is > 140 
+	if n > 140 {
+		Err_400ApplicationJson(w, "chirp too long")
+		return
+	}
+
+	chirp := Chirp{Body: buf.String()}
+	jsonData, err := json.Marshal(chirp)
+	if err != nil {
+		log.Println(err.Error())
+		w.WriteHeader(500)
+		return
+	}
+	buf.Reset()
+	// convert jsonData to string from byte, pass it to a function that returns a string
+	// convert the returned string to byte and svave in jsonData 
+	jsonData = []byte(profaneFUnc(string(jsonData)))
+	buf.Write(jsonData)
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
+
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(200)
+	w.Write(buf.Bytes())
+}
+
+
