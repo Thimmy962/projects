@@ -1,11 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
-	"bytes"
 	"fmt"
 )
 
@@ -75,5 +75,4 @@ func respondWithJSON(w http.ResponseWriter, code int, buf bytes.Buffer, payload 
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(code)
 	w.Write(buf.Bytes())
-
 }

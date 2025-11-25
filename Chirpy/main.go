@@ -102,9 +102,6 @@ func ValidateChirp(w http.ResponseWriter, req *http.Request) {
 		Err_400ApplicationJson(w, "chirp too long")
 		return
 	}
-
 	chirp := Chirp{Body: buf.String()}
 	respondWithJSON(w, 200, buf, chirp)
 }
-
-
