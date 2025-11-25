@@ -71,8 +71,9 @@ func respondWithJSON(w http.ResponseWriter, code int, buf bytes.Buffer, payload 
 	jsonData = []byte(profaneFUnc(string(jsonData)))
 	buf.Write(jsonData)
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
-
+	
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(code)
 	w.Write(buf.Bytes())
+
 }
