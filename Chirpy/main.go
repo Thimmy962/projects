@@ -1,11 +1,15 @@
 package main
 
 import (
-	"bytes"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
+	"Chirpy/internal/database"
 )
 
 type apiConfig struct{
@@ -15,16 +19,43 @@ type apiConfig struct{
 
 type Chirp struct {
 	Body string `json:"body"`
+	UserId string `json:"userId"`
 }
 
-type Error struct {
-	Err string `json:"error"`
+func (chirp * Chirp) validBody() int {
+	n := len(chirp.Body)
+	if n > 140 {
+		return 1
+	}
+	if n < 1 {
+		return -1
+	}
+	return 0
 }
 
+type Server struct {
+    db      *sql.DB
+    queries *database.Queries
+}
 
 var profane =[]string {"kerfuffle", "sharbert", "fornax"}
 
 func main() {
+	godotenv.Load()
+	dbURL := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatal(err.Error())
+		os.Exit(1)
+	}
+
+	dbQuery := database.New(db)
+
+	dbServer := &Server{
+    db:      db,
+    queries: dbQuery,
+}
+
 	port := "8888"
 	serMux := http.NewServeMux()
 
@@ -40,9 +71,10 @@ func main() {
 	serMux.HandleFunc("GET /api/healthz", healthz)
 
 	serMux.Handle("GET /admin/metrics", metrics(&cfg))
-	serMux.HandleFunc("POST /admin/reset", cfg.reset())
 
-	serMux.HandleFunc("POST /api/validate_chirp", ValidateChirp)
+	serMux.HandleFunc("POST /api/validate_chirp", dbServer.CreateChirp)
+	serMux.HandleFunc("POST /api/users", dbServer.createUser)
+	serMux.HandleFunc("POST /admin/reset", dbServer.deleteUsers)
 
 
 	log.Printf("Serving files on port: %s\n", port)
@@ -86,22 +118,4 @@ func (cfg *apiConfig) reset() http.HandlerFunc {
 		// w.Header().Set("status-code")
 		metrics(cfg)
 	})
-}
-
-
-func ValidateChirp(w http.ResponseWriter, req *http.Request) {
-	var buf bytes.Buffer
-	n, err := buf.ReadFrom(req.Body)
-	// if there is an error in the writing
-	if err != nil {
-		Err_500ApplicationJson(w, "something went wrong")
-		return
-	}
-	// if the number of bytes read(n) is > 140 
-	if n > 140 {
-		Err_400ApplicationJson(w, "chirp too long")
-		return
-	}
-	chirp := Chirp{Body: buf.String()}
-	respondWithJSON(w, 200, buf, chirp)
 }
