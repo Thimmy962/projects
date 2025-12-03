@@ -75,6 +75,8 @@ func main() {
 	serMux.HandleFunc("POST /api/validate_chirp", dbServer.CreateChirp)
 	serMux.HandleFunc("POST /api/users", dbServer.createUser)
 	serMux.HandleFunc("POST /admin/reset", dbServer.deleteUsers)
+	serMux.HandleFunc("GET /api/chirps", dbServer.CORSMiddleware(dbServer.ListChirps))
+	serMux.HandleFunc("GET /api/chirps/{id}", dbServer.GetChirp)
 
 
 	log.Printf("Serving files on port: %s\n", port)
@@ -118,4 +120,17 @@ func (cfg *apiConfig) reset() http.HandlerFunc {
 		// w.Header().Set("status-code")
 		metrics(cfg)
 	})
+}
+
+
+
+func (s *Server) CORSMiddleware(next func(w http.ResponseWriter, req *http.Request))  func(w http.ResponseWriter, req *http.Request) {
+	return  func(w http.ResponseWriter, req *http.Request) {
+        // CORS headers
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		next(w, req)
+	}
 }

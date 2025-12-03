@@ -23,7 +23,7 @@ func (s *Server)createUser(w http.ResponseWriter, req *http.Request) {
 		ProcessingError(w, http.StatusBadRequest, dbErr)
 		return
 	}
-	respondWithJSON(w, http.StatusCreated, buf, db_user)
+	respondWithJSONList(w, http.StatusCreated, db_user)
 }
 
 func (s *Server)deleteUsers(w http.ResponseWriter, req *http.Request) {
@@ -36,5 +36,5 @@ func (s *Server)deleteUsers(w http.ResponseWriter, req *http.Request) {
 	if dbErr != nil {
 		ProcessingError(w, http.StatusBadRequest, dbErr)
 	}
-	respondWithJSONWithoutBuffer(w, http.StatusNoContent, dbErr)
+	respondWithJSON(w, http.StatusNoContent, dbErr)
 }

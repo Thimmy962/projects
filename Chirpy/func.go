@@ -3,12 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
-	"fmt"
 )
-
 
 // called on bad request
 func ProcessingError(w http.ResponseWriter, code int, Err error) {
@@ -33,45 +32,30 @@ func cutAndJoin(subStr, str string) string {
 	return strings.Replace(str, subStr, "****", count)
 }
 
-func respondWithJSON(w http.ResponseWriter, code int, buf bytes.Buffer, payload interface{}) {
-	jsonData, err := json.Marshal(payload)
+
+// without looking out for profane words
+func respondWithJSON(w http.ResponseWriter, code int, payload any) {
+	var buf bytes.Buffer
+
+	err := json.NewEncoder(&buf).Encode(payload)
 	if err != nil {
 		log.Println(err.Error())
-		w.WriteHeader(500)
+		ProcessingError(w, 500, err)
 		return
 	}
-	buf.Reset()
-	// convert jsonData to string from byte, pass it to a function that returns a string
-	// convert the returned string to byte and svave in jsonData 
-	jsonData = []byte(profaneFUnc(string(jsonData)))
-	w.WriteHeader(code)
-	buf.Write(jsonData)
+
+	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
-	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(code)
-	w.Write(buf.Bytes())
+	w.WriteHeader(200)
 
-}
-
-
-func respondWithJSONWithoutBuffer(w http.ResponseWriter, code int, payload interface{}) {
-	jsonData, err := json.Marshal(payload)
+	err = json.NewEncoder(w).Encode(payload)
 	if err != nil {
-		log.Println(err.Error())
-		w.WriteHeader(500)
-		return
-	}
-	// convert jsonData to string from byte, pass it to a function that returns a string
-	// convert the returned string to byte and svave in jsonData 
-	jsonData = []byte(profaneFUnc(string(jsonData)))
-	w.WriteHeader(code)
-	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(code)
 
+	}
 }
 
 
-
+// deprecated
 func ValidateChirp(w http.ResponseWriter, req *http.Request) {
 	var buf bytes.Buffer
 	n, err := buf.ReadFrom(req.Body)
@@ -86,5 +70,16 @@ func ValidateChirp(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	chirp := Chirp{Body: buf.String()}
-	respondWithJSON(w, 200, buf, chirp)
+	respondWithJSON(w, 200, chirp)
+}
+
+// writes a list to response
+func respondWithJSONList(w http.ResponseWriter, code int, data any) {
+	var buf bytes.Buffer
+	json.NewEncoder(&buf).Encode(data) 
+	w.WriteHeader(code)
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(data)
 }

@@ -42,5 +42,31 @@ func (s *Server)CreateChirp(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	respondWithJSON(w,http.StatusCreated, buf, db_chirp)
+	respondWithJSON(w,http.StatusCreated, db_chirp)
+}
+
+
+func (s *Server)ListChirps(w http.ResponseWriter, req *http.Request) {
+	db_chirps, err := s.queries.ListChirps(req.Context())
+	if err != nil {
+		log.Println(err.Error())
+		ProcessingError(w, http.StatusBadRequest, err)
+		return
+	}
+	
+	for _, chirp := range db_chirps {
+		chirp.Body = profaneFUnc(chirp.Body)
+	}
+
+	respondWithJSONList(w, http.StatusOK, db_chirps)
+}
+
+
+func (s *Server)GetChirp(w http.ResponseWriter, req *http.Request) {
+	id := req.PathValue("id")
+	data, err := s.queries.GetChirp(req.Context(), id)
+	if err != nil {
+		ProcessingError(w, http.StatusNotFound, err)
+	}
+	respondWithJSON(w, 200, data)
 }
