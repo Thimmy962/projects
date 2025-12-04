@@ -58,7 +58,7 @@ func (s *Server)ListChirps(w http.ResponseWriter, req *http.Request) {
 		chirp.Body = profaneFUnc(chirp.Body)
 	}
 
-	respondWithJSONList(w, http.StatusOK, db_chirps)
+	respondWithJSON(w, http.StatusOK, db_chirps)
 }
 
 

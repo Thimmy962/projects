@@ -33,7 +33,8 @@ func cutAndJoin(subStr, str string) string {
 }
 
 
-// without looking out for profane words
+// handles both writing a single struct or a list of structs to responseWriter
+// all thanks to NewEncoder
 func respondWithJSON(w http.ResponseWriter, code int, payload any) {
 	var buf bytes.Buffer
 
@@ -71,15 +72,4 @@ func ValidateChirp(w http.ResponseWriter, req *http.Request) {
 	}
 	chirp := Chirp{Body: buf.String()}
 	respondWithJSON(w, 200, chirp)
-}
-
-// writes a list to response
-func respondWithJSONList(w http.ResponseWriter, code int, data any) {
-	var buf bytes.Buffer
-	json.NewEncoder(&buf).Encode(data) 
-	w.WriteHeader(code)
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
-	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(data)
 }

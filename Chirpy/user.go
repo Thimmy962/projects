@@ -1,6 +1,8 @@
 package main
 
 import (
+	"Chirpy/internal/auth"
+	"Chirpy/internal/database"
 	"bytes"
 	"database/sql"
 	"encoding/json"
@@ -14,16 +16,33 @@ func (s *Server)createUser(w http.ResponseWriter, req *http.Request) {
 	var buf bytes.Buffer
 	buf.ReadFrom(req.Body)
 	// an anonymous struct
-	email :=  struct {
+	user :=  struct {
 		Email string `json:"email"`
+		PWord string `json:"password"`
 	}{}
-	json.Unmarshal(buf.Bytes(), &email)
-	db_user, dbErr := s.queries.CreateUser(req.Context(), sql.NullString{email.Email, true})
+	err := json.Unmarshal(buf.Bytes(), &user)
+	if err != nil {
+		ProcessingError(w, 500, err)
+	}
+
+	if len(user.PWord) < 8 {
+		ProcessingError(w, 400, fmt.Errorf("password length is less than 8\n"))
+		return
+	}
+
+	hash, err := auth.HashPassword(user.PWord); if err != nil {
+		ProcessingError(w, 500, err)
+		return
+	}
+	user.PWord=hash
+	
+	params := database.CreateUserParams{Email: sql.NullString{user.Email, true}, HashedPassword: sql.NullString{user.PWord, true}}
+	db_user, dbErr := s.queries.CreateUser(req.Context(), params)
 	if dbErr != nil {
 		ProcessingError(w, http.StatusBadRequest, dbErr)
 		return
 	}
-	respondWithJSONList(w, http.StatusCreated, db_user)
+	respondWithJSON(w, http.StatusCreated, db_user)
 }
 
 func (s *Server)deleteUsers(w http.ResponseWriter, req *http.Request) {
