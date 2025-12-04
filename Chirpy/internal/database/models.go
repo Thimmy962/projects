@@ -5,7 +5,7 @@
 package database
 
 import (
-	"database/sql"
+	// "database/sql"
 	"time"
 )
 
@@ -21,6 +21,6 @@ type User struct {
 	ID             string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
-	Email          sql.NullString
-	HashedPassword sql.NullString
+	Email          string
+	HashedPassword string
 }

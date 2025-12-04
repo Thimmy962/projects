@@ -8,6 +8,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -20,7 +21,7 @@ RETURNING id, created_at, updated_at, email, hashed_password
 
 type CreateUserParams struct {
 	Email          sql.NullString
-	HashedPassword sql.NullString
+	HashedPassword string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -43,4 +44,45 @@ DELETE FROM users
 func (q *Queries) DeleteUsers(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, deleteUsers)
 	return err
+}
+
+const getUser = `-- name: GetUser :one
+SELECT id, created_at, updated_at, email FROM users
+WHERE email = $1 AND hashed_password = $2
+`
+
+type GetUserParams struct {
+	Email          string
+	HashedPassword string
+}
+
+type GetUserRow struct {
+	ID        string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Email     string
+}
+
+func (q *Queries) GetUser(ctx context.Context, arg GetUserParams) (GetUserRow, error) {
+	row := q.db.QueryRowContext(ctx, getUser, arg.Email, arg.HashedPassword)
+	var i GetUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+	)
+	return i, err
+}
+
+const getUserPassword = `-- name: GetUserPassword :one
+SELECT hashed_password FROM users
+WHERE email = $1
+`
+
+func (q *Queries) GetUserPassword(ctx context.Context, email sql.NullString) (string, error) {
+	row := q.db.QueryRowContext(ctx, getUserPassword, email)
+	var hashed_password string
+	err := row.Scan(&hashed_password)
+	return hashed_password, err
 }
