@@ -47,7 +47,7 @@ func respondWithJSON(w http.ResponseWriter, code int, payload any) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
-	w.WriteHeader(200)
+	w.WriteHeader(code)
 
 	err = json.NewEncoder(w).Encode(payload)
 	if err != nil {
