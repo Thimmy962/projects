@@ -89,6 +89,7 @@ func main() {
 	serMux.HandleFunc("GET /api/getuser", dbServer.CORSMiddleware(dbServer.getUserDet))
 	serMux.HandleFunc("POST /api/refresh", dbServer.CORSMiddleware(dbServer.refresh))
 	serMux.HandleFunc("PUT /api/users", dbServer.CORSMiddleware(dbServer.editUserDetail))
+	serMux.HandleFunc("DELETE /api/chirps/{id}", dbServer.CORSMiddleware(dbServer.deleteChirp))
 
 
 	log.Printf("Serving files on port: %s\n", port)

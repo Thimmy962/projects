@@ -77,3 +77,28 @@ func (s *Server)getChirp(w http.ResponseWriter, req *http.Request) {
 	}
 	respondWithJSON(w, 200, data)
 }
+
+
+
+func (s *Server)deleteChirp(w http.ResponseWriter, req *http.Request) {
+	chirpId := req.PathValue("id")
+	userId, err := auth.GetBearerToken(req.Header, s.secret); if err != nil {
+		ProcessingError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	chirpId, err = s.queries.GetChirpByUserIDAndChripID(req.Context(), database.GetChirpByUserIDAndChripIDParams{ID: chirpId,
+		UserID: userId})
+	if err != nil {
+			ProcessingError(w, http.StatusNotFound, errors.New("not found"))
+			return
+	}
+
+	if s.queries.DeleteChirpById(req.Context(), chirpId) != nil {
+		ProcessingError(w, http.StatusInternalServerError, errors.New("an error occured"))
+		return
+	}
+
+	respondWithJSON(w, http.StatusNoContent, nil)
+
+}
