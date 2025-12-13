@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 )
 
 func (s *Server)createChirp(w http.ResponseWriter, req *http.Request) {
@@ -87,11 +88,17 @@ func (s *Server)deleteChirp(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	chirpId, err = s.queries.GetChirpByUserIDAndChripID(req.Context(), database.GetChirpByUserIDAndChripIDParams{ID: chirpId,
-		UserID: userId})
+	//returns the chirp is and the userId of the user that created the chirp
+	chirpRow, err := s.queries.GetChirpByChirpID(req.Context(), chirpId)
 	if err != nil {
 			ProcessingError(w, http.StatusNotFound, errors.New("not found"))
 			return
+	}
+
+	// compares the id of the user that created the chirp and the Id of the user extracted from the access token
+	if strings.Compare(userId, chirpRow.UserID) != 0 {
+		ProcessingError(w, http.StatusUnauthorized, errors.New("unauthorized"))
+		return
 	}
 
 	if s.queries.DeleteChirpById(req.Context(), chirpId) != nil {

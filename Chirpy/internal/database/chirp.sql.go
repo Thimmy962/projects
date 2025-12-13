@@ -70,21 +70,21 @@ func (q *Queries) GetChirp(ctx context.Context, id string) (Chirp, error) {
 	return i, err
 }
 
-const getChirpByUserIDAndChripID = `-- name: GetChirpByUserIDAndChripID :one
-SELECT id FROM chirps
-WHERE id = $1 AND user_id = $2
+const getChirpByChirpID = `-- name: GetChirpByChirpID :one
+SELECT id, user_id FROM chirps
+WHERE id = $1
 `
 
-type GetChirpByUserIDAndChripIDParams struct {
+type GetChirpByChirpIDRow struct {
 	ID     string
 	UserID string
 }
 
-func (q *Queries) GetChirpByUserIDAndChripID(ctx context.Context, arg GetChirpByUserIDAndChripIDParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, getChirpByUserIDAndChripID, arg.ID, arg.UserID)
-	var id string
-	err := row.Scan(&id)
-	return id, err
+func (q *Queries) GetChirpByChirpID(ctx context.Context, id string) (GetChirpByChirpIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getChirpByChirpID, id)
+	var i GetChirpByChirpIDRow
+	err := row.Scan(&i.ID, &i.UserID)
+	return i, err
 }
 
 const listChirps = `-- name: ListChirps :many

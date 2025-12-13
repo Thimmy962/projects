@@ -20,6 +20,6 @@ DELETE FROM chirps;
 DELETE FROM chirps WHERE id = $1;
 
 
--- name: GetChirpByUserIDAndChripID :one
-SELECT id FROM chirps
-WHERE id = $1 AND user_id = $2;
+-- name: GetChirpByChirpID :one
+SELECT id, user_id FROM chirps
+WHERE id = $1;
