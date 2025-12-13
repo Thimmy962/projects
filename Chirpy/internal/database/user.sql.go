@@ -7,9 +7,25 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"time"
 )
+
+const changeDetail = `-- name: ChangeDetail :exec
+UPDATE users
+SET email = $1, hashed_password = $2, updated_at = NOW()
+WHERE id = $3
+`
+
+type ChangeDetailParams struct {
+	Email          string
+	HashedPassword string
+	ID             string
+}
+
+func (q *Queries) ChangeDetail(ctx context.Context, arg ChangeDetailParams) error {
+	_, err := q.db.ExecContext(ctx, changeDetail, arg.Email, arg.HashedPassword, arg.ID)
+	return err
+}
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, created_at, updated_at, email, hashed_password)
@@ -20,7 +36,7 @@ RETURNING id, created_at, updated_at, email, hashed_password
 `
 
 type CreateUserParams struct {
-	Email          sql.NullString
+	Email          string
 	HashedPassword string
 }
 
@@ -75,12 +91,29 @@ func (q *Queries) GetUser(ctx context.Context, arg GetUserParams) (GetUserRow, e
 	return i, err
 }
 
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, email FROM users
+WHERE id = $1
+`
+
+type GetUserByIDRow struct {
+	ID    string
+	Email string
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getUserByID, id)
+	var i GetUserByIDRow
+	err := row.Scan(&i.ID, &i.Email)
+	return i, err
+}
+
 const getUserPassword = `-- name: GetUserPassword :one
 SELECT hashed_password FROM users
 WHERE email = $1
 `
 
-func (q *Queries) GetUserPassword(ctx context.Context, email sql.NullString) (string, error) {
+func (q *Queries) GetUserPassword(ctx context.Context, email string) (string, error) {
 	row := q.db.QueryRowContext(ctx, getUserPassword, email)
 	var hashed_password string
 	err := row.Scan(&hashed_password)

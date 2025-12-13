@@ -5,9 +5,13 @@
 package database
 
 import (
-	// "database/sql"
+	"database/sql"
 	"time"
 )
+
+type Blacklist struct {
+	Token string
+}
 
 type Chirp struct {
 	ID        string
@@ -15,6 +19,15 @@ type Chirp struct {
 	UpdatedAt time.Time
 	Body      string
 	UserID    string
+}
+
+type RefreshToken struct {
+	Token     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	UserID    string
+	ExpiresAt time.Time
+	RevokedAt sql.NullTime
 }
 
 type User struct {

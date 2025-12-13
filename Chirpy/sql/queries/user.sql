@@ -17,3 +17,13 @@ WHERE email = $1;
 -- name: GetUser :one
 SELECT id, created_at, updated_at, email FROM users
 WHERE email = $1 AND hashed_password = $2;
+
+-- name: GetUserByID :one
+SELECT id, email FROM users
+WHERE id = $1;
+
+
+-- name: ChangeDetail :exec
+UPDATE users
+SET email = $1, hashed_password = $2, updated_at = NOW()
+WHERE id = $3;

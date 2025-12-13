@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Chirpy/internal/auth"
 	"Chirpy/internal/database"
 	"bytes"
 	"encoding/json"
@@ -11,7 +12,7 @@ import (
 	"net/http"
 )
 
-func (s *Server)CreateChirp(w http.ResponseWriter, req *http.Request) {
+func (s *Server)createChirp(w http.ResponseWriter, req *http.Request) {
 	var buf bytes.Buffer
 	_, err := buf.ReadFrom(req.Body)
 	if err != nil {
@@ -20,6 +21,12 @@ func (s *Server)CreateChirp(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
+	// get the user id from the auth token
+	userID, err := auth.GetBearerToken(req.Header, s.secret)
+	if err != nil {
+		ProcessingError(w, 401, err)
+		return
+	} 
 	chirp := Chirp{}
 	unMashallError := json.Unmarshal(buf.Bytes(), &chirp); if unMashallError != nil {
 		ProcessingError(w, http.StatusInternalServerError, unMashallError)
@@ -35,7 +42,7 @@ func (s *Server)CreateChirp(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db_chirp, err := s.queries.CreateChirp(req.Context(), database.CreateChirpParams{Body: chirp.Body, UserID:chirp.UserId})
+	db_chirp, err := s.queries.CreateChirp(req.Context(), database.CreateChirpParams{Body: chirp.Body, UserID: userID})
 	if err != nil {
 		log.Println(err.Error())
 		ProcessingError(w, http.StatusBadRequest, err)
@@ -46,7 +53,7 @@ func (s *Server)CreateChirp(w http.ResponseWriter, req *http.Request) {
 }
 
 
-func (s *Server)ListChirps(w http.ResponseWriter, req *http.Request) {
+func (s *Server)listChirps(w http.ResponseWriter, req *http.Request) {
 	db_chirps, err := s.queries.ListChirps(req.Context())
 	if err != nil {
 		log.Println(err.Error())
@@ -62,7 +69,7 @@ func (s *Server)ListChirps(w http.ResponseWriter, req *http.Request) {
 }
 
 
-func (s *Server)GetChirp(w http.ResponseWriter, req *http.Request) {
+func (s *Server)getChirp(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 	data, err := s.queries.GetChirp(req.Context(), id)
 	if err != nil {

@@ -14,12 +14,12 @@ import (
 
 type apiConfig struct{
 	serverHit atomic.Int64
+	secret string
 }
 
 
 type Chirp struct {
 	Body string `json:"body"`
-	UserId string `json:"userId"`
 }
 
 func (chirp * Chirp) validBody() int {
@@ -36,12 +36,18 @@ func (chirp * Chirp) validBody() int {
 type Server struct {
     db      *sql.DB
     queries *database.Queries
+	secret string
 }
 
 var profane =[]string {"kerfuffle", "sharbert", "fornax"}
 
 func main() {
-	godotenv.Load()
+	err := godotenv.Load()
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+
 	dbURL := os.Getenv("DB_URL")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -54,13 +60,14 @@ func main() {
 	dbServer := &Server{
     db:      db,
     queries: dbQuery,
+	secret: os.Getenv("JWT_TOKEN_SECRET"),
 }
 
 	port := "8888"
 	serMux := http.NewServeMux()
 
 	server := http.Server{Addr: ":"+ port, Handler: serMux}
-	cfg := apiConfig{}
+	cfg := apiConfig{secret: os.Getenv("JWT_TOKEN_SECRET")}
 
 	root := http.Dir(".")
 	
@@ -69,15 +76,19 @@ func main() {
 	serMux.Handle("/app/assets/", cfg.middlewareMetricsInc(http.StripPrefix("/app/assets/", http.FileServer(root+"/assets"))))
 
 	serMux.HandleFunc("GET /api/healthz", healthz)
+	serMux.HandleFunc("GET /healthz", healthz)
 
 	serMux.Handle("GET /admin/metrics", metrics(&cfg))
 
-	serMux.HandleFunc("POST /api/validate_chirp", dbServer.CreateChirp)
-	serMux.HandleFunc("POST /api/users", dbServer.createUser)
-	serMux.HandleFunc("POST /admin/reset", dbServer.deleteUsers)
-	serMux.HandleFunc("GET /api/chirps", dbServer.CORSMiddleware(dbServer.ListChirps))
-	serMux.HandleFunc("GET /api/chirps/{id}", dbServer.GetChirp)
-	serMux.HandleFunc("POST /api/login", dbServer.GetUser)
+	serMux.HandleFunc("POST /api/users", dbServer.CORSMiddleware(dbServer.createUser))
+	serMux.HandleFunc("POST /admin/reset", dbServer.CORSMiddleware(dbServer.deleteUsers))
+	serMux.HandleFunc("GET /api/chirps", dbServer.CORSMiddleware(dbServer.listChirps))
+	serMux.HandleFunc("POST /api/chirps", dbServer.CORSMiddleware(dbServer.createChirp))
+	serMux.HandleFunc("GET /api/chirps/{id}", dbServer.CORSMiddleware(dbServer.getChirp))
+	serMux.HandleFunc("POST /api/login", dbServer.CORSMiddleware(dbServer.getUserToken))
+	serMux.HandleFunc("GET /api/getuser", dbServer.CORSMiddleware(dbServer.getUserDet))
+	serMux.HandleFunc("POST /api/refresh", dbServer.CORSMiddleware(dbServer.refresh))
+	serMux.HandleFunc("PUT /api/users", dbServer.CORSMiddleware(dbServer.editUserDetail))
 
 
 	log.Printf("Serving files on port: %s\n", port)
@@ -124,8 +135,7 @@ func (cfg *apiConfig) reset() http.HandlerFunc {
 }
 
 
-
-func (s *Server) CORSMiddleware(next func(w http.ResponseWriter, req *http.Request))  func(w http.ResponseWriter, req *http.Request) {
+func (s *Server) CORSMiddleware(next http.HandlerFunc)  http.HandlerFunc{
 	return  func(w http.ResponseWriter, req *http.Request) {
         // CORS headers
         w.Header().Set("Access-Control-Allow-Origin", "*")
