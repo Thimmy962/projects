@@ -141,3 +141,33 @@ func MakeRefreshToken() (string, error) {
 	hashed := fmt.Sprintf("%x", sha256.Sum256([]byte(refresh_token)))
 	return hashed, nil
 }
+
+type Values struct{
+			Key string
+			Err error
+			Code int
+		}
+
+func GetAPIKey(headers http.Header) Values {
+	apiKey := headers.Get("apikey")
+	if apiKey == "" {
+		return struct{
+			Key string
+			Err error
+			Code int
+		}{Key: "", Err: errors.New("apikey header is missing"), Code: http.StatusBadRequest}
+	}
+
+	arr := strings.Fields(apiKey)
+	if len(arr) != 2 {
+		return struct {
+			Key string
+			Err error
+			Code int}{Key: "", Err: errors.New("apikey header is malformed"), Code: http.StatusBadRequest}
+	}
+
+	return struct {
+			Key string
+			Err error
+			Code int}{Key: "", Err: nil, Code: http.StatusOK}
+}
