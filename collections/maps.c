@@ -101,12 +101,8 @@ void add(Map *map, char *key, void *value) {
 	else
 		parent->next = node;
 	if((float)++map->filled / (float)map->size > 0.5) {
-		printf("Size before: %d\n", map->size);
 		resize(map);
-		printf("size after: %d\n", map->size);
 	}
-	printf("Entered\n");
-	
 }
 
 void addNode(Map *map, Node *node) {
@@ -146,7 +142,6 @@ void resize(Map *map) {
 	int32_t current_size = map->size;
 	Node **tmp = map->array;
 	map->size = map->size * 2;
-	printf("Sizeeee: %d\n", map->size);
 	// request a new memory for the list (double the size of the previous list)
 	map->array = malloc((size_t)map->size * sizeof(Node *));
 	if(!map->array) {
@@ -170,7 +165,6 @@ void resize(Map *map) {
 			addNode(map, tmpp);
 		}
 	}
-	// printf("Size after resize: %d\n", map->size);
 }
 
 void *get(Map *map, char *key) {
