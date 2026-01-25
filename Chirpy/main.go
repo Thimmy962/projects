@@ -37,6 +37,7 @@ type Server struct {
     db      *sql.DB
     queries *database.Queries
 	secret string
+	apiKey string
 }
 
 var profane =[]string {"kerfuffle", "sharbert", "fornax"}
@@ -90,6 +91,7 @@ func main() {
 	serMux.HandleFunc("POST /api/refresh", dbServer.CORSMiddleware(dbServer.refresh))
 	serMux.HandleFunc("PUT /api/users", dbServer.CORSMiddleware(dbServer.editUserDetail))
 	serMux.HandleFunc("DELETE /api/chirps/{id}", dbServer.CORSMiddleware(dbServer.deleteChirp))
+	serMux.HandleFunc("POST /api/polka/webhooks", dbServer.CORSMiddleware(dbServer.webhook))
 
 
 	log.Printf("Serving files on port: %s\n", port)
@@ -140,7 +142,7 @@ func (s *Server) CORSMiddleware(next http.HandlerFunc)  http.HandlerFunc{
 	return  func(w http.ResponseWriter, req *http.Request) {
         // CORS headers
         w.Header().Set("Access-Control-Allow-Origin", "*")
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Apikey")
         w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		next(w, req)

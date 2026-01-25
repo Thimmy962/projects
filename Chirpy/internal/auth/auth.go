@@ -149,7 +149,7 @@ type Values struct{
 		}
 
 func GetAPIKey(headers http.Header) Values {
-	apiKey := headers.Get("apikey")
+	apiKey := headers.Get("Apikey")
 	if apiKey == "" {
 		return struct{
 			Key string
